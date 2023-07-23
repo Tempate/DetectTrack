@@ -1,0 +1,135 @@
+INITIAL IDEA
+
+A first approach would go as follows:
+    1. Play the video frame by frame.
+    2. Have the user draw a box around an object.
+    3. Predict where the box'd objects will be in the next frame.
+    4. Reassign the new boxes to the previous objects.
+
+For step 3 we can use the Kalman filter:
+    It predicts the future position of an object based on the 
+    current position.
+
+For step 4 we can use the Hungarian algorithm:
+    It verifies that an object in the current frame is the 
+    same as an object in the previous frame.
+    More concretely, the idea is to compute, for every prediction, 
+    the IOU against all the previous boxes; then, we set the
+    maximum value to 1 and the rest to 0.
+
+Step 1, which should be the easiest, is giving me a bunch of
+trouble. I think there are some mismatched dependencies in
+my system (Qt5 & opencv). I've spent a couple of day trying
+to fix it but I can't. I'll move on from now and come back to
+it later.
+
+The problem with this approach is that the Kalman filter has
+no way of knowing how to make the predictions and, since we
+are not detecting the objects, we have no way of training it.
+
+
+YOLO
+
+After learning a bit about CV, I have found YOLOv8. It
+appears to be some sort of API that can do everything I need.
+I am going to try to make it work for both object detection
+and object tracking, and then remove the object tracking part
+and write my own.
+
+I have made a YOLO script that "works". It detects a few objects
+but it mislabels them. It probably is because I have chosen
+a model that is not the best. In any case, I just want to use
+it for object detection so it should be alright; I don't care 
+about the labels.
+
+Now I have combined both parts: reading the video and processing
+each frame with YOLO. But YOLO appears to be too slow and
+mislabels almost everything.
+
+
+DRAWING BOXES
+
+I am thinking that a first approach towards object tracking
+could simply be to move the boxes upward at a given speed. The
+objects are in a treadmill, so they are always going up. If we
+do this, even though it won't be perfect, it will give us some-
+thing to work with.
+
+I have now a super simple interface in which the video plays 
+frame by frame and the user can draw rectangles. The next step 
+now is to move the rectangles upwards after each frame.
+
+
+PROBLEMS WITH OPENCV
+
+The problems with opencv persist and they are making it very 
+hard to make progress on the code without addressing them. I
+may have made some progress by increasing the waiting time,
+but now I don't have the feature I wanted: make the user 
+skip over each frame when he presses a key in the keyboard.
+
+
+OBJECT TRACKING AT A CONSTANT SPEED
+
+I think I have somehow fixed the problems with opencv. It is now
+working as expected. It shows the video one frame at a time; 
+the user can skip to the next frame by pressing a key in the 
+keyboard. The user can also draw a box surrounding an object 
+and the program will track the object by moving the box verti-
+cally at a constant speed.
+
+I could use this data to tune the Kalman filter, but then the 
+Kalman filter could only ever possibly be as good as this 
+trivial tracking.
+
+
+DEEP LEARNING?
+
+The obvious problem is that we don't have enough data to train
+a network. We could make a CNN and, when a box is added by the 
+user, train the CNN on it, but the network would be too biased.
+
+Thus, another idea could be to build a dataset with portions 
+of the image labeled with whether they are inside of the box 
+or not. This would give us more training data for our network.
+To make a prediction with this network, we would feed it 
+portions of the new image and predict whether they are inside 
+or not of the new box. This would result in a matrix of 0s 
+(the-portion-isnt-in-the-box) and 1s (the-portion-is-in-the-box),
+and, from this matrix we could predict where the new box is.
+
+
+IMPLEMENTING THE KALMAN FILTER
+
+I am going to implement the Kalman Filter to figure out exactly
+how it works. I'll implement it using the current predictions I
+have made at constant speed and see how well it works.
+
+After a bit of work, the Kalman Filter is "working". I put it
+in quotation marks because the predictions are horrible, but 
+at least it's running.
+
+And... it's fixed. The Kalman Filter is now working. The problem
+is, of course, that the measurement is not correct, it's just 
+trying to track the movement of the constant speed tracker.
+
+
+IMPROVING THE MEASUREMENT
+
+Now we have to improve the measurement. I don't particularly 
+love my "Deep Learning" idea. I'm reading a blog about histograms.
+It may make sense.
+
+I am going to try to use cv2's CamShift to make the measurements.
+
+
+OBJECT DETECTION WITH MEAN SHIFT 
+
+I've decided to start with mean shift since it's simpler. I have a 
+version that uses it running right now, but it's not very good. I 
+get the feeling that mean shift sometimes detects the wrong region 
+and tries to track that.
+
+Now it's working decently well. The Mean Shift detector sometimes 
+runs amock and doesn't detect the object properly. I wonder if it
+has something to do with the mask or with the noisy background.
