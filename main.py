@@ -34,29 +34,69 @@ cv2.resizeWindow("Frame", 1500, 900)
 new_box = []
 objects = []
 
+selecting_new_object = False
 
-def click_event(event, x, y, flags, frame):
-    if event == cv2.EVENT_LBUTTONDOWN:
+
+def mouse_event(event, x, y, flags, frame):
+    global selecting_new_object
+
+    # During mouse events we draw on a copy of the frame to
+    # remove the previously drawn objects during mouse events.
+    # This is specially useful when hovering.
+    frame_ = frame.copy()
+
+    if event == cv2.EVENT_MOUSEMOVE:
+        if selecting_new_object:
+            # Show the box that would result from clicking where 
+            # the mouse is hovering over.
+            box = Box(new_box[0], [x,y], color=COLOR_REFERENCE)
+            box.draw(frame_)
+            cv2.imshow("Frame", frame_)
+
+    elif event == cv2.EVENT_LBUTTONDOWN:
         # Save the click's location to draw a new box
         new_box.append([x,y])
 
+        if len(new_box) == 1:
+            # A new object is being selected
+            selecting_new_object = True
+
+            cv2.circle(frame_, (x,y), radius=3, color=COLOR_REFERENCE, thickness=3)
+            cv2.imshow("Frame", frame_)
+
         if len(new_box) == 2:
             # The box is complete. Save it.
-            br = new_box.pop()    # Bottom right
-            tl = new_box.pop()    # Top left
+            pt1 = new_box.pop()
+            pt2 = new_box.pop()
+
+            minx = min(pt1[0], pt2[0])
+            miny = min(pt1[1], pt2[1])
+            maxx = max(pt1[0], pt2[0])
+            maxy = max(pt1[1], pt2[1])
+
+            tl = [minx, miny]   # Top left
+            br = [maxx, maxy]   # Bottom right
+
+            # The object has already been selected
+            selecting_new_object = False
 
             # We save the box as a reference
             box = Box(tl, br, color=COLOR_REFERENCE)
 
             # We create a new detector for the box
             box_detected = Box(tl, br, color=COLOR_DETECTED)
-            detector = Detector(frame, box_detected)
+            detector = Detector(frame_, box_detected)
 
             # We create a new predictor for the box
             box_predicted = Box(tl, br, color=COLOR_PREDICTED)
             predictor = Predictor(box_predicted)
-
+            
+            # Save the trackers for each object
             objects.append([box,detector,predictor])
+            
+            # Draw the reference box
+            box.draw(frame_)
+            cv2.imshow("Frame", frame_)
 
 while True:
     success, frame = cap.read()
@@ -101,7 +141,7 @@ while True:
     cv2.imshow("Frame", frame)
     
     # Check for mouse clicks
-    cv2.setMouseCallback("Frame", click_event, frame)
+    cv2.setMouseCallback("Frame", mouse_event, frame)
 
     # Check if the user wants to quit
     key = cv2.waitKey(0)

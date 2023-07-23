@@ -21,12 +21,8 @@ python main.py video.mp4
 Users can:
 * **Skip to the next frame** of the video by pressing the `SPACEBAR`.
 
-* **Select a region** to be tracked by clicking:
-    1. Firstly, in the top left corner (of the region to be tracked).
-    2. Secondly, in the bottom right corner (of the region to be tracked).
+* **Select a region** to be tracked by clicking on two points.
 
-    The selected region will be displayed in the next frame. 
-    
     The detector works best when all four corners of the selected region are inside the object that is being tracked.
 
 * **Quit the program** by pressing `q`.
